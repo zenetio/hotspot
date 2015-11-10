@@ -1,0 +1,78 @@
+#!/bin/bash
+# Watch Dog for Host Spot device
+# Author: carlosrl@gmail.com
+# Nov/09/15 
+# Version 1.0
+# Description: The watchdog will check the behavior of modem connected to pre-defined interface and 
+# will call wvdial tool if the refered modem is not communicating. This will work as a "restart modem process"
+###
+
+# Init varibles
+
+iTX=0
+iRX=0
+iRXTX=""
+fRX=0
+fTX=0
+fRXTX=""
+STATUS=0
+LOG_DIR=/var/log
+LOGFILE="/var/log/check-hotspot.log"
+DEV="eth0"
+
+# Run as root, of course.
+
+if [ "$UID" -ne 0 ]; then
+    echo "Must be root to run this script."
+    exit $E_NOTROOT
+fi
+
+# -- Gathering data from interface
+
+if [ -n "$1" ]; then
+# Test whether command-line argument is present (non-empty).
+    dev=$1
+else
+    dev=$DEV # Default, if not specified on command-line.
+fi
+
+# -- Verify that interface is streaming data
+
+iRXTX=`ifconfig $dev | awk '/RX bytes/ { $2=substr($2,7);  $6=substr($6,7); printf("%i %i", $2, $6) }' `
+iRX=`echo $iRXTX | cut -d' ' -f1`
+iTX=`echo $iRXTX | cut -d' ' -f2`
+
+# -- Gathering data from log file
+
+FTIME=`date +%m/%d/%y-%H:%M:%S`
+
+if [ -e "$LOGFILE" ]; then
+    #echo "file $LOGFILE found"
+    fRXTX=$(tail -n 1 $LOGFILE)
+    #echo $fRXTX
+    if [ -n "$fRXTX" ]; then
+        fRX=`echo $fRXTX | cut -d' ' -f2`
+        fTX=`echo $fRXTX | cut -d' ' -f3`
+        STATUS=`echo $fRXTX | cut -d' ' -f4`
+    fi
+else
+    # create a new log file
+    echo "$FTIME $iRXTX 1" > $LOGFILE
+    exit 8
+fi
+	# check if modem process is running
+
+proc=`ps axl | grep -E "pppd" | grep -E "modem" | grep -E "wvdial"`
+if [ -n "$proc" ]; then
+    # hotspot is running. Just update log file
+
+    echo "$FTIME $iRXTX 1" >> $LOGFILE
+    exit 4
+else
+    # modem process not running. Lets restart it.
+
+    echo "$FTIME $iRXTX 0" >> $LOGFILE
+    /usr/bin/wvdial &
+    exit 10
+fi
+
