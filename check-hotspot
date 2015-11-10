@@ -9,6 +9,7 @@
 
 # Init varibles
 
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 iTX=0
 iRX=0
 iRXTX=""
@@ -38,7 +39,7 @@ fi
 
 # -- Verify that interface is streaming data
 
-iRXTX=`ifconfig $dev | awk '/RX bytes/ { $2=substr($2,7);  $6=substr($6,7); printf("%i %i", $2, $6) }' `
+iRXTX=`ifconfig $dev | awk '/RX bytes/ { $2=substr($2,7);  $6=substr($6,7); printf("%i %i", $2, $6) }'`
 iRX=`echo $iRXTX | cut -d' ' -f1`
 iTX=`echo $iRXTX | cut -d' ' -f2`
 
